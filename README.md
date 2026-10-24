@@ -85,35 +85,11 @@ RDS) on 25 October 2026.
 
 ### On AWS
 
-```mermaid
-flowchart TB
-    user([Browser]) -->|HTTP :80| alb
+![AWS architecture: a browser reaches an internet-facing ALB in the VPC's public subnets; the ALB routes / to the ECS Fargate frontend service and /api/* and /health to the ECS Fargate backend service; the backend connects to RDS for PostgreSQL in a private subnet on port 5432; both services pull images from ECR and send logs to CloudWatch, and the backend receives DATABASE_URL and SECRET_KEY from SSM Parameter Store at task start; Terraform provisions everything](docs/images/aws-architecture.png)
 
-    subgraph aws["AWS · ap-south-1"]
-      subgraph vpc["VPC 10.0.0.0/16"]
-        subgraph pub["Public subnets · 10.0.1.0/24 + 10.0.2.0/24 · two AZs"]
-          alb["Application Load Balancer<br/>sg: alb"]
-          fe["ECS Fargate · frontend<br/>nginx + React build · :80<br/>sg: frontend"]
-          be["ECS Fargate · backend<br/>FastAPI + Uvicorn · :8000<br/>sg: backend"]
-        end
-        subgraph priv["Private subnets · 10.0.11.0/24 + 10.0.12.0/24 · no internet route"]
-          rds[("RDS PostgreSQL 18<br/>not publicly accessible<br/>sg: rds")]
-        end
-      end
-      ecr["ECR<br/>container images"]
-      ssm["SSM Parameter Store<br/>DATABASE_URL · SECRET_KEY"]
-      cw["CloudWatch Logs<br/>7-day retention"]
-    end
-
-    alb -->|"default rule: /*"| fe
-    alb -->|"/api/* and /health"| be
-    be -->|":5432"| rds
-    fe -. pull image .-> ecr
-    be -. pull image .-> ecr
-    be -. secrets at task start .-> ssm
-    fe -. stdout / stderr .-> cw
-    be -. stdout / stderr .-> cw
-```
+The diagram draws the ALB in one availability zone for readability; it actually
+runs in both public subnets. The ECS services can also place tasks in either
+public subnet.
 
 **How a request flows.** The browser only ever talks to the ALB, so the site and
 its API share one origin:
@@ -971,6 +947,7 @@ ecommerce-platform/
 │   ├── architecture.md             # system design
 │   ├── audit.md                    # point-in-time audit log
 │   ├── decisions.md                # decision log
+│   ├── images/                     # AWS architecture diagram
 │   ├── requirements.md
 │   └── screenshots/                # captured from the live deployment
 ├── docker-compose.yml              # local stack: frontend, backend, postgres
