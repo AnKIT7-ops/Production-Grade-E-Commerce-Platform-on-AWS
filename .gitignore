@@ -34,6 +34,8 @@ Thumbs.db
 *.tfstate.*
 crash.log
 crash.*.log
+*.tfvars
+*.tfvars.json
 
 # Logs
 *.log
