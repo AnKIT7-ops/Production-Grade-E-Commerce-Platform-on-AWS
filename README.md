@@ -32,8 +32,26 @@ CI/CD, HTTPS and alerting are not built yet; see [Roadmap](#roadmap).
 
 ---
 
+## Screenshots
+
+These were captured from the live AWS deployment (browser → ALB → ECS Fargate →
+RDS) on 25 October 2026.
+
+![Storefront home page](docs/screenshots/01-home.png)
+
+| Catalogue: category, price and stock filters | Product detail |
+|---|---|
+| ![Catalogue page with category filters and product grid](docs/screenshots/02-catalogue.png) | ![Product detail page with stock and add-to-cart](docs/screenshots/03-product.png) |
+| **Cart: server-side, per user** | **Checkout: simulated, no payment taken** |
+| ![Cart with two products and an order summary](docs/screenshots/04-cart.png) | ![Checkout form with shipping details and order summary](docs/screenshots/05-checkout.png) |
+| **Order placed, with status timeline** | **Mobile layout (390 px)** |
+| ![Order AMP-000002 with items, total and status timeline](docs/screenshots/06-order.png) | <img src="docs/screenshots/07-mobile-home.png" alt="Home page on a phone-sized screen" width="260"> |
+
+---
+
 ## Contents
 
+- [Screenshots](#screenshots)
 - [Architecture](#architecture)
 - [Technology stack](#technology-stack)
 - [AWS deployment](#aws-deployment)
@@ -384,7 +402,7 @@ through the public ALB URL unless noted.
 | Register → login → `GET /api/auth/me` | JWT issued and accepted |
 | `GET /api/auth/me` with no token | `401`, as intended |
 | `GET /api/cart` with a token | `200` |
-| Checkout and order history, in the browser | Order placed and shown in history |
+| Checkout and order history, in the browser | Order placed and shown in history (see [Screenshots](#screenshots)) |
 | Seed task (one-off ECS task) | Exit code `0` |
 
 **Backend startup log** (CloudWatch `/ecs/ecommerce-platform/backend`), showing
@@ -953,7 +971,8 @@ ecommerce-platform/
 │   ├── architecture.md             # system design
 │   ├── audit.md                    # point-in-time audit log
 │   ├── decisions.md                # decision log
-│   └── requirements.md
+│   ├── requirements.md
+│   └── screenshots/                # captured from the live deployment
 ├── docker-compose.yml              # local stack: frontend, backend, postgres
 └── README.md
 ```
