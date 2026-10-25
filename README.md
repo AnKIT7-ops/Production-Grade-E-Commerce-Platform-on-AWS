@@ -5,38 +5,35 @@ Docker and deployed to AWS with Terraform: ECS Fargate behind an Application Loa
 Balancer, a private RDS PostgreSQL database, images in ECR, secrets in SSM
 Parameter Store and logs in CloudWatch.
 
-**Status:** deployed and verified on AWS (`ap-south-1`, October 2026). The site,
-API, database, authentication, cart, checkout and order history were all tested end
-to end through the public load balancer; see [Verification](#verification).
-CI/CD, HTTPS and alerting are not built yet; see
-[Known limitations](#known-limitations).
+**Status:** deployed on AWS in `ap-south-1`. CI/CD, HTTPS and alerting are not in
+place yet; see [Known limitations](#known-limitations).
 
-**What this project demonstrates**
+## Highlights
 
-- **Infrastructure as code.** Every AWS resource lives in Terraform (a VPC across
-  two availability zones, security groups, an ALB, ECS, RDS, ECR, IAM and
-  CloudWatch). There is no click-ops.
+- **Infrastructure as code.** Every AWS resource is defined in Terraform: a VPC
+  across two availability zones, security groups, an ALB, ECS, RDS, ECR, IAM and
+  CloudWatch.
 - **Layered network security.** Only the load balancer accepts internet traffic.
   The containers accept traffic only from the load balancer, and the database
   accepts it only from the backend.
-- **Secrets kept out of everything.** Secrets never appear in Git, Terraform source
-  or the ECS task definition. ECS injects them from SSM Parameter Store when a task
-  starts, and the IAM policy can read exactly those two parameters.
+- **No secrets in code or configuration.** Secrets never appear in Git, Terraform
+  source or the ECS task definition. ECS injects them from SSM Parameter Store when
+  a task starts, and the IAM policy can read exactly those two parameters.
 - **Safe deployments.** ECS replaces tasks only after the new one passes its health
   check, and the circuit breaker rolls back automatically when one doesn't. The
   backend health check makes a real round trip to the database.
-- **Cost-aware design.** Running the containers in public subnets with locked-down
-  security groups avoids a NAT gateway, which would cost about $40 a month.
-- **A real application underneath.** It has JWT auth with refresh tokens, a checkout
-  that can't oversell under concurrency, money handled as decimals throughout, and
-  131 backend tests running against real PostgreSQL.
+- **Cost-efficient networking.** Running the containers in public subnets with
+  locked-down security groups avoids a NAT gateway, which would cost about $40 a
+  month.
+- **Correct under concurrency.** JWT auth with refresh tokens, a checkout that
+  can't oversell when shoppers race for the last unit, and money handled as
+  decimals throughout. Covered by 131 backend tests against real PostgreSQL.
 
 ---
 
 ## Screenshots
 
-These were captured from the live AWS deployment (browser → ALB → ECS Fargate →
-RDS) on 25 October 2026.
+From the deployed environment (browser → ALB → ECS Fargate → RDS).
 
 ![Storefront home page](docs/screenshots/01-home.png)
 
@@ -61,7 +58,7 @@ RDS) on 25 October 2026.
   - [How secrets are handled](#how-secrets-are-handled)
   - [Deploying from scratch](#deploying-from-scratch)
   - [Releasing a new version](#releasing-a-new-version)
-  - [Verification](#verification)
+  - [Verifying a deployment](#verifying-a-deployment)
   - [Costs](#costs)
   - [Pausing and cleaning up](#pausing-and-cleaning-up)
   - [Troubleshooting](#troubleshooting)
@@ -256,8 +253,8 @@ Each layer accepts traffic only from the layer in front of it:
 
 ### Deploying from scratch
 
-The commands below are Windows PowerShell, the shell this project was built and
-deployed with, and they run from `infrastructure/terraform/` unless stated.
+Commands are written for Windows PowerShell 5.1 and run from
+`infrastructure/terraform/` unless stated otherwise.
 
 **Prerequisites:**
 - AWS CLI v2, signed in to an identity that can manage these services
@@ -337,7 +334,7 @@ Remove-Item seed.json
 ```
 
 **7. Open the site.** Run `terraform output -raw alb_url`, then follow
-[Verification](#verification) to check it.
+[Verifying a deployment](#verifying-a-deployment) to check it.
 
 ### Releasing a new version
 
@@ -362,27 +359,26 @@ read it:
 aws ecs update-service --region ap-south-1 --cluster ecommerce-platform-cluster --service ecommerce-platform-backend --force-new-deployment
 ```
 
-### Verification
+### Verifying a deployment
 
-The deployment was verified on **25 October 2026**. Every check below went
-through the public ALB URL unless noted.
+A healthy deployment passes every check below. Except for the AWS CLI checks,
+each one goes through the public ALB URL.
 
-| Check | Result |
+| Check | Expected result |
 |---|---|
-| `terraform plan` → `apply` | `11 added, 0 changed, 0 destroyed` (the deployment layer, on top of the existing network, database and registries) |
-| ALB target health | `frontend-tg`: **healthy**. `backend-tg`: **healthy** |
+| ALB target health | `healthy` in both `frontend-tg` and `backend-tg` |
 | ECS services | Both at 1/1 running, rollout `COMPLETED` |
 | `GET /health` | `{"status":"healthy","database":"connected"}` |
 | `GET /` and `GET /products` | `200`, the React app. Deep links are served by nginx's SPA fallback |
 | `GET /api/products`, `GET /api/categories` | `200`. 34 products and 6 categories after seeding |
-| Register → login → `GET /api/auth/me` | JWT issued and accepted |
-| `GET /api/auth/me` with no token | `401`, as intended |
+| Register → login → `GET /api/auth/me` | A JWT is issued and accepted |
+| `GET /api/auth/me` with no token | `401` |
 | `GET /api/cart` with a token | `200` |
-| Checkout and order history, in the browser | Order placed and shown in history (see [Screenshots](#screenshots)) |
-| Seed task (one-off ECS task) | Exit code `0` |
+| In the browser: add to cart, check out | The order appears under `/orders` |
 
-**Backend startup log** (CloudWatch `/ecs/ecommerce-platform/backend`), showing
-the migrations running once and the ALB health checks passing:
+On a first start, the backend log (CloudWatch `/ecs/ecommerce-platform/backend`)
+shows each migration once, then Uvicorn starting and the ALB health checks
+passing:
 
 ```
 INFO  [alembic.runtime.migration] Running upgrade  -> 344fa34cc067, initial ecommerce schema
@@ -392,7 +388,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 INFO:     10.0.1.114:17204 - "GET /health HTTP/1.1" 200 OK
 ```
 
-**Seed task output:**
+A successful seed task prints:
 
 ```
 Seeding production database...
@@ -401,7 +397,7 @@ Seeding production database...
 Done.
 ```
 
-**Re-run the checks yourself:**
+The core checks from the command line:
 
 ```powershell
 $base = terraform output -raw alb_url
@@ -426,7 +422,7 @@ These are approximate on-demand prices for `ap-south-1`. Check the
 
 ### Pausing and cleaning up
 
-**Pause between demos.** Scaling to 0 stops the Fargate and task IP charges:
+**Scale down when idle.** Scaling to 0 stops the Fargate and task IP charges:
 
 ```powershell
 foreach ($s in "ecommerce-platform-backend","ecommerce-platform-frontend") {
@@ -471,12 +467,10 @@ foreach ($s in "ecommerce-platform-backend","ecommerce-platform-frontend") {
 
 ### Troubleshooting
 
-These are the problems hit during the real deployment, and how each was found.
-
 | Symptom | Cause | Fix |
 |---|---|---|
-| Frontend task exits immediately: `host not found in upstream "backend"` | nginx resolves a literal `proxy_pass` hostname at startup. `backend` exists only on the Docker Compose network | [`nginx.conf`](frontend/nginx.conf) proxies through a variable, so the lookup happens per request and nginx starts anywhere. On AWS the ALB routes `/api/*` directly, so that block is never used |
-| Backend task stops with exit code 1, and the log shows `password authentication failed for user "postgres"` | The `DATABASE_URL` parameter held the wrong password. Ctrl+V at a `Read-Host -AsSecureString` prompt inserts a control character instead of pasting | Build the URL from `terraform.tfvars` ([step 4](#deploying-from-scratch)), overwrite the parameter, then `--force-new-deployment` |
+| Frontend task exits immediately: `host not found in upstream "backend"` | An image built before the current [`nginx.conf`](frontend/nginx.conf). nginx resolves a literal `proxy_pass` hostname at startup, and `backend` exists only on the Docker Compose network | Rebuild the frontend image. The current config proxies through a variable, so the lookup happens per request and nginx starts anywhere. On AWS the ALB routes `/api/*` directly, so that block is never used |
+| Backend task stops with exit code 1, and the log shows `password authentication failed for user "postgres"` | The `DATABASE_URL` parameter doesn't match the RDS password. A common cause: Ctrl+V at a `Read-Host -AsSecureString` prompt inserts a control character instead of pasting | Build the URL from `terraform.tfvars` ([step 4](#deploying-from-scratch)), overwrite the parameter, then `--force-new-deployment` |
 | `docker login` to ECR fails with `400 Bad Request` | Windows PowerShell 5.1 re-encodes text piped into native programs | Run the pipe inside `cmd /c "..."` ([step 3](#deploying-from-scratch)) |
 | Rollout `FAILED`, service events say `tasks failed to start` | The circuit breaker stopped retrying a task that kept crashing | Read the reason first, then fix and `--force-new-deployment` |
 
@@ -862,7 +856,8 @@ separate `ecommerce_test_db`. If not, it falls back to a dedicated
 it. That is equally isolated, and the suite prints how to enable the separate
 database if you would prefer one. Either way, development data is never touched.
 
-For checks against the deployed stack, see [Verification](#verification).
+For checks against the deployed stack, see
+[Verifying a deployment](#verifying-a-deployment).
 
 ## Development commands
 
@@ -1001,7 +996,7 @@ have no internet route, so three options were compared:
 | NAT gateway, tasks in private subnets | ~$41 + $0.056/GB | Typical production layout |
 | VPC interface endpoints (ECR ×2, Logs, SSM) + S3 gateway endpoint | ~$32 (1 AZ) to $64 (2 AZs) | No internet path at all; most locked down |
 
-For a demo-scale deployment, the chosen option gives the same inbound exposure at
+At the current scale of one task per service, the chosen option gives the same inbound exposure at
 a fraction of the cost. Moving to a NAT gateway later is a change to two
 arguments on each service (`subnets` and `assign_public_ip`) plus the NAT itself.
 
@@ -1040,7 +1035,7 @@ These are deliberate, and each has a clear upgrade path.
   orders. The UI disables the button while submitting, which covers the realistic
   case. The real fix is a client-supplied `Idempotency-Key` with a unique column
   on `orders`.
-- **Product photos are third-party demo assets.** The seeded catalogue uses the
+- **Product photos are third-party sample assets.** The seeded catalogue uses the
   public [dummyjson](https://dummyjson.com) image CDN, which serves real product
   shots on clean backgrounds.
   - The photos show real brands and aren't licensed for commercial use. Replace
