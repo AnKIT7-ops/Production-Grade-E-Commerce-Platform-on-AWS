@@ -8,7 +8,8 @@ Parameter Store and logs in CloudWatch.
 **Status:** deployed and verified on AWS (`ap-south-1`, October 2026). The site,
 API, database, authentication, cart, checkout and order history were all tested end
 to end through the public load balancer; see [Verification](#verification).
-CI/CD, HTTPS and alerting are not built yet; see [Roadmap](#roadmap).
+CI/CD, HTTPS and alerting are not built yet; see
+[Known limitations](#known-limitations).
 
 **What this project demonstrates**
 
@@ -77,7 +78,6 @@ RDS) on 25 October 2026.
 - [Project structure](#project-structure)
 - [Design notes](#design-notes)
 - [Known limitations](#known-limitations)
-- [Roadmap](#roadmap)
 
 ---
 
@@ -1078,24 +1078,3 @@ These are deliberate, and each has a clear upgrade path.
   Container Insights.
 - **Manual deployments.** Images are built and pushed by hand; there is no CI/CD
   pipeline.
-
-## Roadmap
-
-Completed:
-
-1. Architecture and requirements
-2. React + FastAPI + PostgreSQL running locally
-3. Dockerize the stack (multi-stage images, Docker Compose)
-4. AWS VPC: two AZs, public and private subnets
-5. Terraform for every AWS resource
-6. Deploy to ECS Fargate behind an ALB, with RDS, ECR, SSM and CloudWatch ←
-   **you are here**
-
-Next:
-
-7. HTTPS: Route 53 domain, ACM certificate, HTTP → HTTPS redirect
-8. CI/CD: GitHub Actions with AWS OIDC (test, build, push, `terraform apply`)
-9. Remote Terraform state in S3 with locking
-10. Monitoring: CloudWatch alarms on 5xx responses, unhealthy targets and RDS CPU/storage
-11. Production hardening: private subnets with NAT or VPC endpoints, Multi-AZ RDS,
-    migrations as a one-off task, autoscaling
