@@ -7,7 +7,7 @@ was changed — not a description of current behaviour. For how the system works
 
 ---
 
-## Pre-Phase-3 audit — 20 September 2026
+## Pre-containerisation audit — 20 September 2026
 
 **Scope:** full repository, backend through frontend
 **Commit:** `2434705` — *fix: close two frontend state bugs and a restock race found in audit*
@@ -530,5 +530,5 @@ commit message says so.
 | Documentation | Accurate and complete |
 | Git | Clean tree, committed, pushed |
 
-The stopping point has been respected: **complete local backend, complete functional frontend.**
-The repository is ready for the DevOps/Cloud phase.
+**Outcome:** a complete local backend and a complete functional frontend. The
+repository is ready for containerisation and cloud deployment.

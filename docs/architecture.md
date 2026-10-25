@@ -137,24 +137,23 @@ check before deciding, which stops a reload on `/orders` flashing the sign-in pa
 Not yet addressed: rate limiting, refresh-token revocation, email verification,
 audit logging. See the limitations section of the README.
 
-## Delivery roadmap
+## Deployment
 
-```
-PHASE 1  Architecture                                    ✅ done
-PHASE 2  React + FastAPI + PostgreSQL locally            ✅ done
-PHASE 3  Dockerize everything
-PHASE 4  Build AWS VPC
-PHASE 5  Deploy application
-PHASE 6  Terraform
-PHASE 7  CI/CD
-PHASE 8  Security
-PHASE 9  Monitoring
-PHASE 10 Production hardening
-```
+The application runs on AWS: ECS Fargate behind an Application Load Balancer, with
+RDS PostgreSQL, all defined in Terraform. The README's
+[AWS deployment](../README.md#aws-deployment) section covers the infrastructure,
+the security model and operations.
 
-Phase 3 onwards is deliberately untouched. The application is structured to make
-that move straightforward: all configuration comes from the environment, the schema
-is migration-driven, and the frontend's backend address is a single build-time
-variable (`VITE_API_URL`). In development that variable is empty and the Vite dev
-server proxies `/api` to the backend, so the two are same-origin; a production
-build has no proxy and must set it explicitly.
+Three properties of the application make that deployment simple:
+
+- **All configuration comes from the environment.** ECS injects it, including
+  secrets from SSM Parameter Store.
+- **The schema is migration-driven.** The container runs `alembic upgrade head`
+  before serving.
+- **The frontend and API share an origin.** The frontend calls relative `/api`
+  paths, and something in front routes them to the backend:
+  - the Vite dev server in development
+  - nginx under Docker Compose
+  - the ALB on AWS
+
+  So `VITE_API_URL` stays empty, and there is no CORS configuration to manage.
